@@ -74,7 +74,7 @@ async function createCsvFile(data) {
   let csv = new ObjectsToCsv(data);
 
   // Save to file:
-  await csv.toDisk("./test.csv");
+  await csv.toDisk("./csv/test.csv");
 
   // Return the CSV file as string:
   //console.log(await csv.toString());
@@ -83,8 +83,8 @@ async function createCsvFile(data) {
 async function scrapeCraiglist() {
   const jobsWithHeaders = await scrapeJobHeader();
   const jobsFullData = await scrapeDescription(jobsWithHeaders);
+  console.log(jobsFullData);
   await createCsvFile(jobsFullData);
-  //console.log(jobsFullData);
   console.log(scrapeResults.length);
 }
 

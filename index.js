@@ -2,7 +2,7 @@ const request = require("request-promise");
 const cheerio = require("cheerio");
 const ObjectsToCsv = require("objects-to-csv");
 
-const url = "https://sfbay.craigslist.org/search/jjj?s=0";
+const url = "https://sfbay.craigslist.org/search/jjj?s=";
 
 // const scrapeJobHeader = {
 //   title: "Ruby on Rails Developer",
@@ -18,11 +18,12 @@ const url = "https://sfbay.craigslist.org/search/jjj?s=0";
 
 const scrapeResults = [];
 
+// NO PAGINATION
 async function scrapeJobHeader() {
   try {
     const htmlResult = await request.get(url);
     const $ = await cheerio.load(htmlResult);
-
+    console.log(`Looking headers in: ${url}`);
     // geting the info of the jobs
     $(".result-info").each((index, element) => {
       // loop through all jobs
@@ -48,12 +49,46 @@ async function scrapeJobHeader() {
   }
 }
 
+// PAGINATION
+async function scrapeJobHeaderWithPagination() {
+  try {
+    for (let index = 0; index <= 120; index += 120) {
+      const htmlResult = await request.get(`${url}${index}`);
+      const $ = await cheerio.load(htmlResult);
+      console.log(`Looking headers in: ${url}${index}`);
+      // geting the info of the jobs
+      $(".result-info").each((index, element) => {
+        // loop through all jobs
+        const resultTitle = $(element).children(".result-title"); // select the 'result-title' html class
+        const title = resultTitle.text(); // get the job title
+        const url = resultTitle.attr("href"); // get the job link
+        const datePosted = new Date(
+          $(element)
+            .children(".result-date")
+            .attr("datetime")
+        );
+        const hood = $(element)
+          .find(".result-hood")
+          .text();
+        const scrapeResult = { title, url, datePosted, hood }; // create an object
+        scrapeResults.push(scrapeResult); // push on the results array
+      });
+    }
+
+    //console.log(scrapeResults);
+    return scrapeResults;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 async function scrapeDescription(jobsWithHeaders) {
   return await Promise.all(
     jobsWithHeaders.map(async job => {
       try {
         const htmlResult = await request.get(job.url);
         const $ = await cheerio.load(htmlResult);
+        console.log(`Looking descriptions in: ${job.url}`);
         $(".print-qrcode-container").remove();
         job.description = $("#postingbody").text();
         job.address = $("div.mapaddress").text();
@@ -74,7 +109,7 @@ async function createCsvFile(data) {
   let csv = new ObjectsToCsv(data);
 
   // Save to file:
-  await csv.toDisk("./csv/test.csv");
+  await csv.toDisk("./csv/test2.csv");
 
   // Return the CSV file as string:
   //console.log(await csv.toString());
@@ -83,7 +118,7 @@ async function createCsvFile(data) {
 async function scrapeCraiglist() {
   const jobsWithHeaders = await scrapeJobHeader();
   const jobsFullData = await scrapeDescription(jobsWithHeaders);
-  console.log(jobsFullData);
+  //console.log(jobsFullData);
   await createCsvFile(jobsFullData);
   console.log(scrapeResults.length);
 }
